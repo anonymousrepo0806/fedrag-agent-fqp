@@ -1,0 +1,83 @@
+
+x-env: &env
+  TASK: ${TASK:-mortality_next}
+  TASK_TAG: ${TASK:-mortality_next}
+  ARM: ${ARM:-client}
+  FL: ${FL:-fedavg}
+  MODEL: ${MODEL:-sage}
+  CLIENTS: ${CLIENTS:-10}
+  SEED: ${SEED:-1}
+  PARTITION: ${PARTITION:-noniid}
+  ALPHA: ${ALPHA:-0.5}
+  ROUNDS: ${ROUNDS:-20}
+  LOCAL_EPOCHS: ${LOCAL_EPOCHS:-1}
+  BUDGET: ${BUDGET:-16}
+  COMM_DTYPE: ${COMM_DTYPE:-fp32}
+  MU: ${MU:-0.01}
+  LAM_EWC: ${LAM_EWC:-0.5}
+  LAM_KD: ${LAM_KD:-0.5}
+  HYPOTHESES: ${HYPOTHESES:-1}
+  HYP_LEARN: ${HYP_LEARN:-1}
+  HYP_MODEL: ${HYP_MODEL:-linear}
+  HYP_ROUNDS: ${HYP_ROUNDS:-20}
+  FQP_REPL: ${FQP_REPL:-2}
+  FQP_HOPS: ${FQP_HOPS:-2}
+  FQP_DECOYS: ${FQP_DECOYS:-0}
+  TG_MODEL: ${TG_MODEL:-google/flan-t5-small}
+  HIDE_DX: ${HIDE_DX:-0}
+  MEAS: ${MEAS:-1}
+  MEAS_FRAC: ${MEAS_FRAC:-0.3}
+  MEAS_KINDS: ${MEAS_KINDS:-labs,vitals}
+  TG_MAX_TRAIN: ${TG_MAX_TRAIN:-400}
+  TG_MAX_VAL: ${TG_MAX_VAL:-30}
+  TG_MAX_TEST: ${TG_MAX_TEST:-100}
+  THREADS: ${THREADS:-1}
+  SERVER_URL: http://server:8080
+  PORT: "8080"
+  KG_RESOURCES: /kg_resources
+
+services:
+  prep:
+    build: .
+    image: fedrag:cpu
+    pull_policy: build
+    command: ["prep"]
+    environment: *env
+    volumes:
+      - ${MIMIC_HOST:-./data/mimic3}:/mimic:ro
+      - ${KG_HOST:-./GraphCare-main/KG_mapping}:/kg:ro
+      - ${KG_RES_HOST:-./GraphCare-main/resources}:/kg_resources:ro
+      - ${USER_DATA_HOST:-./data/user_data}:/user:ro
+      - ${WORK_HOST:-./work}:/work
+    deploy:
+      resources:
+        limits: {cpus: "${PREP_CPUS:-2}", memory: "${PREP_MEM:-4g}"}
+
+  server:
+    image: fedrag:cpu
+    pull_policy: never
+    command: ["server"]
+    environment: *env
+    depends_on:
+      prep: {condition: service_completed_successfully}
+    volumes:
+      - ${WORK_HOST:-./work}:/work:ro
+      - ${RESULTS_HOST:-./results}:/results
+    deploy:
+      resources:
+        limits: {cpus: "${SERVER_CPUS:-1}", memory: "${SERVER_MEM:-1500m}"}
+
+  client:
+    image: fedrag:cpu
+    pull_policy: never
+    command: ["client"]
+    environment: *env
+    depends_on:
+      server: {condition: service_started}
+    volumes:
+      - ${WORK_HOST:-./work}:/work:ro
+      - ${USER_DATA_HOST:-./data/user_data}:/user:ro
+    deploy:
+      replicas: ${CLIENTS:-10}
+      resources:
+        limits: {cpus: "${CLIENT_CPUS:-1}", memory: "${CLIENT_MEM:-800m}"}
