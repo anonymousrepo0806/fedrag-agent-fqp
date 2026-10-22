@@ -9,7 +9,5 @@ hypo_learn.py, measurements.py, textgen.py, textnet.py, sparql_ext.py, agent_fqp
 Dockerfile, docker-compose.yml, scripts/*.sh: CPU only container setup and sweeps.
 
 Data
-MIMIC III is not included. Obtain it under its data use agreement and point the commands to your copy.
+MIMIC III is not included. Obtain it under its data use agreement.
 
-Example
-python fedrag_sim.py retrieval --cohort work/mortality_next/cohort.pkl --kg work/mortality_next/kg.pkl --clients 10 --seeds 1 2 3 --arms server client client_local fqp --fqp_repl 2 --fqp_hops 2 --fqp_join_top 20 --fqp_join_w 0.2 --depth 20 --k 10 20 --out results.json
